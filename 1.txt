@@ -1,68 +1,14 @@
--- SQL Queries to retrieve from all the DataBases
-SELECT 
-    dp.name AS PrincipalName,
-    dp.type_desc AS PrincipalType,
-    p.permission_name AS PermissionName,
-    p.state_desc AS PermissionState
-FROM 
-    sys.database_permissions AS p
-JOIN 
-    sys.database_principals AS dp ON p.grantee_principal_id = dp.principal_id
-WHERE 
-    dp.type IN ('S', 'U', 'G') -- S = SQL user, U = Windows user, G = Windows group
-ORDER BY 
-    PrincipalType, PrincipalName;
+# Execute command on remote server to get users and group memberships
+$userGroupsInfo = Invoke-Command -ComputerName ServerName -ScriptBlock {
+    Get-WmiObject -Class Win32_GroupUser |
+    ForEach-Object {
+        $user = ([WMI]$_.PartComponent).Caption
+        $group = ([WMI]$_.GroupComponent).Caption
+        [PSCustomObject]@{
+            UserName = $user
+            GroupName = $group
+        }
+    }
+} -Authentication Negotiate -ErrorAction SilentlyContinue
 
-
--->
-SELECT
- dp.grantee,
- dp.grantor,
- dp.privilege_type,
- dp.is_grantable,
- dp.with_hierarchy,
- d.datname AS database_name  
-FROM
- pg_catalog.pg_database d  
-JOIN
- pg_catalog.pg_namespace n ON d.oid = n.nspowner  
-JOIN
- pg_catalog.pg_class c ON n.oid = c.relnamespace  
-JOIN
- pg_catalog.pg_acl a ON c.oid = a.objoid  
-JOIN
- pg_catalog.pg_roles r ON a.grantor = r.oid  
-JOIN
- pg_catalog.pg_roles g ON a.grantee = g.oid  
-JOIN
- pg_catalog.pg_namespace pn ON c.relnamespace = pn.oid  
-JOIN
- pg_catalog.pg_database pd ON pn.nspowner = pd.oid  
-JOIN
- information_schema.role_table_grants dp ON dp.grantee = g.oid AND dp.table_name = c.relname AND dp.table_schema = pn.nspname  
-WHERE
- dp.grantee NOT IN (SELECT oid FROM pg_roles WHERE rolname = 'public')  
- AND dp.grantor NOT IN (SELECT oid FROM pg_roles WHERE rolname = 'public')  
- AND dp.privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER')  
-ORDER BY
- database_name, grantee, grantor, privilege_type;
-
-
-
-SELECT 
-    dp.name AS DatabaseName,
-    dp.type_desc AS DatabaseType,
-    u.name AS UserName,
-    u.type_desc AS UserType,
-    p.permission_name AS PermissionName,
-    p.state_desc AS PermissionState
-FROM 
-    sys.database_permissions p
-JOIN 
-    sys.database_principals u ON p.grantee_principal_id = u.principal_id
-JOIN 
-    sys.databases dp ON dp.database_id = DB_ID()
-WHERE 
-    dp.state_desc = 'ONLINE'
-ORDER BY 
-    DatabaseName, UserName;
+$userGroupsInfo
