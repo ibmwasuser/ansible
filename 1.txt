@@ -49,3 +49,45 @@ foreach ($share in $shares) {
         Write-Host "--------------------------------"
     }
 }
+
+
+--------------------------------------------------
+# Define the script block
+$scriptBlock = {
+    param($ComputerName)
+
+    # Get all shared folders
+    $shares = Get-WmiObject -Class Win32_Share -ComputerName $ComputerName
+
+    # Loop through each share
+    foreach ($share in $shares) {
+        Write-Host "Share Name: $($share.Name)"
+        Write-Host "Path: $($share.Path)"
+        Write-Host "Description: $($share.Description)"
+        Write-Host "--------------------------------"
+
+        # Get permissions for each share
+        $permissions = Get-WmiObject -Query "SELECT * FROM Win32_LogicalShareSecuritySetting WHERE Name = '$($share.Name)'" -ComputerName $ComputerName
+
+        # Get AccessMask and Trustees (Users/Groups)
+        $permissions.GetAccessRights().Access | ForEach-Object {
+            $trustee = $_.Trustee
+            $accessMask = $_.AccessMask
+
+            # Convert AccessMask to readable permissions
+            $permissionsReadable = Switch ($accessMask) {
+                2032127 { "Full Control" }
+                1179817 { "Change" }
+                1179785 { "Read" }
+                Default { "Unknown" }
+            }
+
+            Write-Host "User/Group: $($trustee.Name)"
+            Write-Host "Permissions: $permissionsReadable"
+            Write-Host "--------------------------------"
+        }
+    }
+}
+
+# Invoke the script block with a target computer
+Invoke-Command -ScriptBlock $scriptBlock -ArgumentList "localhost"
