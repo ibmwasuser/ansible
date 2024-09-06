@@ -1,57 +1,3 @@
-# Execute command on remote server to get users and group memberships
-$userGroupsInfo = Invoke-Command -ComputerName ServerName -ScriptBlock {
-    Get-WmiObject -Class Win32_GroupUser |
-    ForEach-Object {
-        $user = ([WMI]$_.PartComponent).Caption
-        $group = ([WMI]$_.GroupComponent).Caption
-        [PSCustomObject]@{
-            UserName = $user
-            GroupName = $group
-        }
-    }
-} -Authentication Negotiate -ErrorAction SilentlyContinue
-
-$userGroupsInfo
-
-
----
-# Specify the computer name or use localhost
-$ComputerName = "localhost"
-
-# Get all shared folders
-$shares = Get-WmiObject -Class Win32_Share -ComputerName $ComputerName
-
-# Loop through each share
-foreach ($share in $shares) {
-    Write-Host "Share Name: $($share.Name)"
-    Write-Host "Path: $($share.Path)"
-    Write-Host "Description: $($share.Description)"
-    Write-Host "--------------------------------"
-
-    # Get permissions for each share
-    $permissions = Get-WmiObject -Query "SELECT * FROM Win32_LogicalShareSecuritySetting WHERE Name = '$($share.Name)'" -ComputerName $ComputerName
-
-    # Get AccessMask and Trustees (Users/Groups)
-    $permissions.GetAccessRights().Access | ForEach-Object {
-        $trustee = $_.Trustee
-        $accessMask = $_.AccessMask
-
-        # Convert AccessMask to readable permissions
-        $permissionsReadable = Switch ($accessMask) {
-            2032127 { "Full Control" }
-            1179817 { "Change" }
-            1179785 { "Read" }
-            Default { "Unknown" }
-        }
-
-        Write-Host "User/Group: $($trustee.Name)"
-        Write-Host "Permissions: $permissionsReadable"
-        Write-Host "--------------------------------"
-    }
-}
-
-
---------------------------------------------------
 # Define the script block
 $scriptBlock = {
     param($ComputerName)
@@ -66,26 +12,38 @@ $scriptBlock = {
         Write-Host "Description: $($share.Description)"
         Write-Host "--------------------------------"
 
-        # Get permissions for each share
-        $permissions = Get-WmiObject -Query "SELECT * FROM Win32_LogicalShareSecuritySetting WHERE Name = '$($share.Name)'" -ComputerName $ComputerName
+        # Get Share permissions using WMI (Win32_LogicalShareSecuritySetting)
+        $sharePermissions = Get-WmiObject -Query "SELECT * FROM Win32_LogicalShareSecuritySetting WHERE Name = '$($share.Name)'" -ComputerName $ComputerName
 
-        # Get AccessMask and Trustees (Users/Groups)
-        $permissions.GetAccessRights().Access | ForEach-Object {
-            $trustee = $_.Trustee
-            $accessMask = $_.AccessMask
+        $accessList = $sharePermissions.GetSecurityDescriptor().Descriptor.DACL
+        foreach ($access in $accessList) {
+            $trustee = $access.Trustee.Name
+            $accessMask = $access.AccessMask
 
             # Convert AccessMask to readable permissions
             $permissionsReadable = Switch ($accessMask) {
                 2032127 { "Full Control" }
-                1179817 { "Change" }
-                1179785 { "Read" }
+                1245631 { "Change" }
+                1179817 { "Read" }
                 Default { "Unknown" }
             }
 
-            Write-Host "User/Group: $($trustee.Name)"
+            Write-Host "User/Group: $trustee"
             Write-Host "Permissions: $permissionsReadable"
             Write-Host "--------------------------------"
         }
+
+        # Get NTFS permissions for the folder
+        try {
+            $acl = Get-Acl $share.Path
+            $acl.Access | ForEach-Object {
+                Write-Host "NTFS Permissions for $($_.IdentityReference): $($_.FileSystemRights)"
+            }
+        } catch {
+            Write-Host "Failed to get NTFS permissions for path: $($share.Path)"
+        }
+
+        Write-Host "--------------------------------`n"
     }
 }
 
