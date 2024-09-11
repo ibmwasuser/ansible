@@ -62,3 +62,54 @@ foreach ($computer in $computerNames) {
     # Invoke the script block for each computer
     Invoke-Command -ScriptBlock $scriptBlock -ArgumentList $computer
 }
+---->
+# Define the input parameters
+$computerName = "localhost"  # Change to remote computer if needed
+$shares = @("Share1", "Share2")  # List of share names
+$userOrGroup = "DOMAIN\UserOrGroup"  # Specify the user or group to grant Full Control
+
+# Define the script block to set full control on shares
+$scriptBlock = {
+    param($ComputerName, $Shares, $UserOrGroup)
+
+    foreach ($shareName in $Shares) {
+        # Retrieve the share details
+        $share = Get-WmiObject -Class Win32_Share -Filter "Name = '$shareName'" -ComputerName $ComputerName
+
+        if ($share) {
+            Write-Host "Processing share: $($share.Name) on $ComputerName"
+
+            # Get the current security descriptor for the share
+            $shareSecurity = Get-WmiObject -Query "SELECT * FROM Win32_LogicalShareSecuritySetting WHERE Name = '$($share.Name)'" -ComputerName $ComputerName
+
+            if ($shareSecurity) {
+                # Get the current security descriptor
+                $sd = $shareSecurity.GetSecurityDescriptor().Descriptor
+
+                # Define a new Access Control Entry (ACE) for full control
+                $ace = New-Object System.Management.ManagementBaseObject ($sd.DACL[0].Clone())
+                $ace.Trustee.Name = $UserOrGroup
+                $ace.Trustee.Domain = $null
+                $ace.Trustee.SidString = $null
+                $ace.Trustee.Sid = $null
+                $ace.AccessMask = 2032127  # Full Control
+                $ace.AceFlags = 3  # Inheritance
+                $ace.AceType = 0  # Allow
+
+                # Add the new ACE to the security descriptor
+                $sd.DACL += $ace
+
+                # Apply the updated security descriptor
+                $shareSecurity.SetSecurityDescriptor($sd)
+                Write-Host "Full control granted to $UserOrGroup on $($share.Name)"
+            } else {
+                Write-Host "Failed to retrieve security descriptor for $($share.Name)"
+            }
+        } else {
+            Write-Host "Share $shareName not found on $ComputerName"
+        }
+    }
+}
+
+# Invoke the script block with target shares
+Invoke-Command -ScriptBlock $scriptBlock -ArgumentList $computerName, $shares, $userOrGroup
