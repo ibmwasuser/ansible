@@ -113,3 +113,105 @@ $scriptBlock = {
 
 # Invoke the script block with target shares
 Invoke-Command -ScriptBlock $scriptBlock -ArgumentList $computerName, $shares, $userOrGroup
+-------------------------------
+provider "aws" {
+  region = "us-east-1"
+}
+
+# existing VPC and Subnets
+variable "vpc_id" {
+  description = "Already created VPCID"
+}
+
+variable "subnet_ids" {
+  description = "Already created Subnetid"
+  type        = list(string)
+}
+
+# Define Security Group
+resource "aws_security_group" "aurora_sg" {
+  vpc_id = var.vpc_id
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Aurora DB Cluster
+resource "aws_rds_cluster" "aurora_cluster" {
+  cluster_identifier      = "aurora-cluster"
+  engine                  = "aurora-mysql"
+  engine_version          = "5.7.mysql_aurora.2.08.1"
+  master_username         = "admin"
+  master_password         = "mypassword123"
+  database_name           = "main_db"
+  db_subnet_group_name    = aws_db_subnet_group.aurora_subnets.name
+  vpc_security_group_ids  = [aws_security_group.aurora_sg.id]
+
+  skip_final_snapshot = true
+}
+
+# Subnet Group -  Existing Subnets
+resource "aws_db_subnet_group" "aurora_subnets" {
+  name       = "aurora-subnet-group"
+  subnet_ids = var.subnet_ids
+}
+
+# Aurora DB Instance 1
+resource "aws_rds_cluster_instance" "aurora_instance_1" {
+  identifier              = "aurora-instance-1"
+  cluster_identifier      = aws_rds_cluster.aurora_cluster.id
+  instance_class          = "db.r5.large"
+  engine                  = aws_rds_cluster.aurora_cluster.engine
+  db_subnet_group_name    = aws_db_subnet_group.aurora_subnets.name
+}
+
+# Aurora DB Instance 2
+resource "aws_rds_cluster_instance" "aurora_instance_2" {
+  identifier              = "aurora-instance-2"
+  cluster_identifier      = aws_rds_cluster.aurora_cluster.id
+  instance_class          = "db.r5.large"
+  engine                  = aws_rds_cluster.aurora_cluster.engine
+  db_subnet_group_name    = aws_db_subnet_group.aurora_subnets.name
+}
+
+# First DB creating in cluster
+resource "aws_rds_cluster_parameter_group" "aurora_pg" {
+  name   = "aurora-pg"
+  family = "aurora-mysql5.7"
+}
+
+resource "aws_rds_cluster" "aurora_db_1" {
+  cluster_identifier      = "aurora-db-1"
+  engine                  = "aurora-mysql"
+  engine_version          = "5.7.mysql_aurora.2.08.1"
+  master_username         = "admin"
+  master_password         = "mypassword123"
+  database_name           = "database1"
+  db_subnet_group_name    = aws_db_subnet_group.aurora_subnets.name
+  vpc_security_group_ids  = [aws_security_group.aurora_sg.id]
+  skip_final_snapshot     = true
+}
+
+# Second DB creating in cluster
+resource "aws_rds_cluster" "aurora_db_2" {
+  cluster_identifier      = "aurora-db-2"
+  engine                  = "aurora-mysql"
+  engine_version          = "5.7.mysql_aurora.2.08.1"
+  master_username         = "admin"
+  master_password         = "mypassword123"
+  database_name           = "database2"
+  db_subnet_group_name    = aws_db_subnet_group.aurora_subnets.name
+  vpc_security_group_ids  = [aws_security_group.aurora_sg.id]
+  skip_final_snapshot     = true
+}
