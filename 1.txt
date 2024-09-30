@@ -215,3 +215,46 @@ resource "aws_rds_cluster" "aurora_db_2" {
   vpc_security_group_ids  = [aws_security_group.aurora_sg.id]
   skip_final_snapshot     = true
 }
+
+
+------
+# Define the provider
+provider "aws" {
+  region = "us-west-2" # Give region name
+}
+
+# Getting the existing Aurora DB cluster
+data "aws_rds_cluster" "existing_cluster" {
+  cluster_identifier = "existing-cluster-id" # Give your exiting cluster ID
+}
+
+# Getting the existing security group for the cluster 
+data "aws_security_group" "existing_sg" {
+  id = "sg-xxxxxxx" # Give your exising security group ID
+}
+
+# Getting the existing subnet group (optional if you know the subnet group ID)
+data "aws_db_subnet_group" "existing_subnet_group" {
+  name = "your-db-subnet-group" # Replace with your existing subnet group
+}
+
+# creating a new DB instance and add it to existing cluster
+resource "aws_rds_cluster_instance" "new_db_instance" {
+  identifier             = "new-db-instance-01"   # Identifier for new DB instance
+  cluster_identifier     = data.aws_rds_cluster.existing_cluster.id  # We are poinitng to the existing cluster
+  instance_class         = "db.r5.large"  # Choose required instance type
+  engine                 = "aurora-mysql"  # Choose the required engine
+  db_subnet_group_name   = data.aws_db_subnet_group.existing_subnet_group.name
+  publicly_accessible    = false   # Set as per your needs to available publicly or not.
+  apply_immediately      = true    # Apply changes immediately
+  auto_minor_version_upgrade = true
+
+  # Use the existing security group
+  vpc_security_group_ids = [data.aws_security_group.existing_sg.id]
+
+  # Optional tags
+  tags = {
+    Name = "New DB Instance"
+    Environment = "Testing"
+  }
+}
