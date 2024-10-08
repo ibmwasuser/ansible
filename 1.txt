@@ -305,3 +305,50 @@ foreach ($server in $servers) {
         Write-Output "Could not connect to $server: $_"
     }
 }
+
+---->   <--------------------
+# Replace with your server names
+$servers = @("Server1", "Server2", "Server3")
+
+# Initialize an array to hold the output
+$htmlOutput = @()
+
+# Start the HTML content
+$htmlOutput += "<html><head><title>Logged On Users</title></head><body>"
+$htmlOutput += "<h1>Logged On Users Report</h1>"
+$htmlOutput += "<table border='1'><tr><th>Server</th><th>Logged On Users</th></tr>"
+
+foreach ($server in $servers) {
+    try {
+        $output = quser /server:$server 2>&1
+
+        # Check if there are logged on users
+        if ($output -match "No User exists") {
+            # If no user is logged on, add a blank entry for that server
+            $htmlOutput += "<tr><td>$server</td><td></td></tr>"
+        } else {
+            # Parse the output to get the logged on users
+            $loggedOnUsers = $output | Select-String -Pattern '^\s*([^\s]+)\s+' | ForEach-Object {
+                $_ -replace '^\s*([^\s]+)\s+', '$1'
+            } -join ", "
+
+            # Add the server and logged on users to the HTML output
+            $htmlOutput += "<tr><td>$server</td><td>$loggedOnUsers</td></tr>"
+        }
+    } catch {
+        # If there is a connection error, add a blank entry for that server
+        $htmlOutput += "<tr><td>$server</td><td></td></tr>"
+    }
+}
+
+# End the HTML content
+$htmlOutput += "</table></body></html>"
+
+# Specify the output file location
+$outputFile = "C:\Path\To\Your\Directory\LoggedOnUsersReport.html"  # Change this to your desired path
+
+# Save the HTML output to a file
+$htmlOutput | Out-File -FilePath $outputFile -Encoding UTF8
+
+# Inform the user where the report is saved
+Write-Output "Report saved to $outputFile"
