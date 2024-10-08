@@ -258,3 +258,50 @@ resource "aws_rds_cluster_instance" "new_db_instance" {
     Environment = "Testing"
   }
 }
+-----> copy from here<-----------------
+# Replace with your server names
+$servers = @("Server1", "Server2", "Server3")
+
+foreach ($server in $servers) {
+    try {
+        $sessions = Get-CimInstance -ClassName Win32_ComputerSystem -ComputerName $server
+        $loggedOnUsers = $sessions.UserName
+
+        if ($loggedOnUsers) {
+            Write-Output "$server: $loggedOnUsers"
+        } else {
+            Write-Output "$server: No users logged on"
+        }
+    } catch {
+        Write-Output "Could not connect to $server: $_"
+    }
+}
+
+
+-->
+# Replace with your server names
+$servers = @("Server1", "Server2", "Server3")
+
+foreach ($server in $servers) {
+    try {
+        $output = quser /server:$server 2>&1
+        Write-Output "$server:"
+        Write-Output $output
+    } catch {
+        Write-Output "Could not connect to $server: $_"
+    }
+}
+
+
+-->
+# Replace with your server names
+$servers = @("Server1", "Server2", "Server3")
+
+foreach ($server in $servers) {
+    try {
+        $users = Get-WmiObject -Class Win32_ComputerSystem -ComputerName $server
+        Write-Output "$server: $($users.UserName)"
+    } catch {
+        Write-Output "Could not connect to $server: $_"
+    }
+}
