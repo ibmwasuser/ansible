@@ -1,54 +1,29 @@
-# Replace with your server names
-$servers = @("Server1", "Server2", "Server3")
+Venafi Implementation:
+Led the implementation of Venafi across BAS, automating certificate renewals and migrations for Non-Prod servers. Streamlined certificate management, ensuring smooth, timely renewals and enhanced security compliance.
 
-# Initialize an array to hold the output
-$htmlOutput = @()
+Prod to Preprod Refresh Strategy:
+Implemented a robust refresh strategy from Production to Pre-Production, ensuring real-time testing and accurate validation of data fixes before release. This proactive approach helped minimize potential production issues.
 
-# Start the HTML content
-$htmlOutput += "<html><head><title>Disconnected Users</title></head><body>"
-$htmlOutput += "<h1>Disconnected Users Report</h1>"
-$htmlOutput += "<table border='1'><tr><th>Server</th><th>Disconnected Users</th></tr>"
+CM Upgrade:
+Successfully spearheaded the upgrade of Configuration Management (CM) from an outdated version to the latest, ensuring continued support and improved performance.
 
-foreach ($server in $servers) {
-    try {
-        # Execute the quser command to get logged-on users
-        $output = quser /server:$server 2>&1
+DB Deletion:
+Effectively coordinated with the Database Team to safely delete unused Pre-Prod databases, optimizing system resources and preventing clutter.
 
-        # Check if the output contains valid user data
-        if ($output -match "No user exists") {
-            # If no user is logged on, add a blank entry for that server
-            $htmlOutput += "<tr><td>$server</td><td>No users logged on</td></tr>"
-        } elseif ($output -match "USER") {
-            # Extract disconnected user information
-            $disconnectedUsers = $output | Where-Object { $_ -match "^\s*(\S+)\s+\S+\s+\S+\s+\S+\s+Disc" } | ForEach-Object {
-                # Get the user name
-                $_ -replace '^\s*(\S+)\s+\S+\s+\S+\s+\S+\s+Disc', '$1'
-            } -join ", "
+Disk Drive Monitoring Script:
+Automated disk drive space monitoring with a custom PowerShell script, conducting quarterly checks. This solution saved time and proactively identified potential issues.
 
-            # Add the server and disconnected users to the HTML output
-            if ($disconnectedUsers) {
-                $htmlOutput += "<tr><td>$server</td><td>$disconnectedUsers</td></tr>"
-            } else {
-                $htmlOutput += "<tr><td>$server</td><td>No disconnected users</td></tr>"
-            }
-        } else {
-            # If there are other unexpected outputs, handle them
-            $htmlOutput += "<tr><td>$server</td><td>Error retrieving user info</td></tr>"
-        }
-    } catch {
-        # If there is a connection error, add a blank entry for that server
-        $htmlOutput += "<tr><td>$server</td><td>Error connecting</td></tr>"
-    }
-}
+Deployment & Support for Mania:
+Delivered the Mania release to production with zero post-release issues. Managed a smooth transition, providing reliable support during the warranty period.
 
-# End the HTML content
-$htmlOutput += "</table></body></html>"
+SMTP Configuration:
+Took ownership of configuring and implementing SMTP across environments, where it had not been set up, ensuring reliable communication and notification systems.
 
-# Specify the output file location
-$outputFile = "C:\Path\To\Your\Directory\DisconnectedUsersReport.html"  # Change this to your desired path
+PCS & RRS Import:
+Led the quarterly import of PCS and RRS, maintaining synchronization and ensuring smooth, up-to-date system operation.
 
-# Save the HTML output to a file
-$htmlOutput | Out-File -FilePath $outputFile -Encoding UTF8
+Dx-APM URL Monitoring:
+Proactively monitored the Dx-APM for Prod applications, ensuring constant performance tracking and addressing any potential issues early.
 
-# Inform the user where the report is saved
-Write-Output "Report saved to $outputFile"
+Security Auditing in Non-Prod Systems:
+Contributed to security improvements by identifying and removing unused accounts across Non-Prod systems, enhancing overall system security.
