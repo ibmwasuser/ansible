@@ -1,1 +1,1 @@
-We have a few certificates in the IPM Non-Prod systems that are nearing expiration, but these certificates are currently managed by the Web Services team. To avoid this issue in the future and streamline the next certificate renewal process, we have decided to take ownership of these certificates within our IPM team. The ownership has now been transferred, and IPM certificates are installed on the respective servers.
+
