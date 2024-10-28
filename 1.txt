@@ -1,13 +1,1 @@
-# Specify the directory path
-$directoryPath = "C:\Your\Directory\Path"
-
-# Get the list of folders and their sizes (non-recursive)
-Get-ChildItem -Path $directoryPath -Directory | ForEach-Object {
-    $folderPath = $_.FullName
-    $folderSizeMB = (Get-ChildItem -Path $folderPath -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB
-    [PSCustomObject]@{
-        FolderName = $_.Name
-        SizeMB     = [math]::Round($folderSizeMB, 2)
-    }
-} | Format-Table -AutoSize
 
