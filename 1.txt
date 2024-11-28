@@ -1,1 +1,8 @@
-
+Get-EventLog -LogName Security -InstanceId 4740 | ForEach-Object {
+    $_.Message -match "Account Name:\s*(\S+).*?Caller Computer Name:\s*(\S+)" | Out-Null
+    [PSCustomObject]@{
+        TimeGenerated     = $_.TimeGenerated
+        LockedOutUser     = $matches[1]
+        SourceComputer    = $matches[2]
+    }
+} | Where-Object { $_.LockedOutUser -eq "<username>" } | Format-Table -AutoSize
