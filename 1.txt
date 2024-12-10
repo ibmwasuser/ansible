@@ -1,17 +1,1 @@
-Here’s a compact single-slide version with one-liner explanations:  
 
----
-
-### **Key Updates and Enhancements in Non-Prod Management**  
-
-1. **CI Items - TYK URL Update:** Transitioned from older URL to the latest for better functionality and security.  
-2. **NFT Multi DB Connection:** One dataset dynamically connects to baseline or volume-loaded DBs for accurate testing.  
-3. **Daily Health Check Tool:** Automated monitoring of Non-Prod environments for proactive issue resolution.  
-4. **Quarterly Disk Monitoring:** Regular space utilization checks and optimizations for Non-Prod servers.  
-5. **PreProd Refresh Strategy:** Refresh PreProd with Production data to ensure consistency and reliable testing.  
-6. **Production Replication in NFT:** Simulated Production in NFT for load testing and early issue detection.  
-7. **Improvements:** Added automation, proactive monitoring, and alignment with production workflows.  
-
----
-
-This format keeps it concise and easy to present visually on a single slide. Would you like assistance with the design or additional refinements?
