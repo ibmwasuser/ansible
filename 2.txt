@@ -1,4 +1,13 @@
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $uri = "https://www.example.com"
-$response = Invoke-WebRequest -Uri $uri -UseBasicParsing
-Write-Output "Successfully connected using TLS 1.2"
+
+try {
+    $response = Invoke-WebRequest -Uri $uri -UseBasicParsing -TimeoutSec 10
+    if ($response.StatusCode -eq 200) {
+        Write-Output "Successfully connected using TLS 1.2"
+    } else {
+        Write-Output "Unable to connect. HTTP Status Code: $($response.StatusCode)"
+    }
+} catch {
+    Write-Output "Unable to connect. Error: $($_.Exception.Message)"
+}
