@@ -1,12 +1,29 @@
-SELECT 
-    t.NAME AS TableName,
-    p.rows AS RowCounts
-FROM 
-    sys.tables AS t
-INNER JOIN 
-    sys.partitions AS p ON t.object_id = p.object_id
-WHERE 
-    p.index_id IN (0, 1) -- 0: Heap, 1: Clustered Index
-ORDER BY 
-    t.NAME;
+# Import Active Directory module
+Import-Module ActiveDirectory
 
+# Define input and output file paths
+$inputFile = "C:\Temp\groups.txt"    # Text file containing group names (one per line)
+$outputFile = "C:\Temp\AD_Groups_Users.csv"
+
+# Read group names from the file
+$groupNames = Get-Content -Path $inputFile
+
+# Initialize an array to store results
+$groupData = @()
+
+foreach ($groupName in $groupNames) {
+    # Get members of the group
+    $members = Get-ADGroupMember -Identity $groupName -ErrorAction SilentlyContinue | Select-Object Name, SamAccountName
+
+    # Store data in an object
+    $groupData += [PSCustomObject]@{
+        GroupName = $groupName
+        Members   = if ($members) { ($members | ForEach-Object { $_.SamAccountName }) -join ", " } else { "No Members" }
+    }
+}
+
+# Export the results to CSV
+$groupData | Export-Csv -Path $outputFile -NoTypeInformation
+
+# Display the output in PowerShell
+$groupData
