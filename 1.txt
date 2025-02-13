@@ -1,3 +1,21 @@
+$User = "narao"
+$Server = "europa"
+
+# Get the user's group memberships
+$Groups = Get-ADUser -Identity $User -Server $Server -Properties Memberof |
+    Select-Object -ExpandProperty Memberof |
+    ForEach-Object { $_ -replace '^CN=([^,]+),.*$','$1' }
+
+# Print output in a structured format
+Write-Output "User: $User"
+Write-Output "----------------"
+$Groups | ForEach-Object { Write-Output $_ }
+
+-->
+$Groups | ForEach-Object { [PSCustomObject]@{ User = $User; Group = $_ } } | 
+    Export-Csv -Path "C:\Temp\User_Groups.csv" -NoTypeInformation
+
+---------------------------------------------------------------
 # Import Active Directory module
 Import-Module ActiveDirectory
 
