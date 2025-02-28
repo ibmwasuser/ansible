@@ -45,3 +45,67 @@ $groupData | Export-Csv -Path $outputFile -NoTypeInformation
 
 # Display the output in PowerShell
 $groupData
+
+
+-- Database Name and Datafiles with Size Information
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    name AS FileName,
+    physical_name AS PhysicalName,
+    size * 8.0 / 1024 AS FileSizeMB, -- Size in MB
+    size * 8.0 / 1024 - FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024 AS FreeSpaceMB, -- Free space in MB
+    CASE type_desc
+        WHEN 'ROWS' THEN 'Data File'
+        WHEN 'LOG' THEN 'Log File'
+        ELSE type_desc
+    END AS FileType
+FROM sys.master_files
+WHERE database_id > 4 -- Exclude system databases (master, tempdb, model, msdb) - adjust if needed
+ORDER BY DatabaseName, FileType, FileName;
+
+-- TempDB Datafiles and Size Information
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    name AS FileName,
+    physical_name AS PhysicalName,
+    size * 8.0 / 1024 AS FileSizeMB, -- Size in MB
+    size * 8.0 / 1024 - FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024 AS FreeSpaceMB, -- Free space in MB
+    CASE type_desc
+        WHEN 'ROWS' THEN 'Data File'
+        WHEN 'LOG' THEN 'Log File'
+        ELSE type_desc
+    END AS FileType
+FROM sys.master_files
+WHERE database_id = 2 -- tempdb
+ORDER BY DatabaseName, FileType, FileName;
+
+
+-- Total Allocated Size and Total Free Size (excluding log files)
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    SUM(size * 8.0 / 1024) AS TotalAllocatedMB,
+    SUM(size * 8.0 / 1024 - FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024) AS TotalFreeMB
+FROM sys.master_files
+WHERE database_id > 4 AND type_desc = 'ROWS' -- Exclude system databases and log files
+GROUP BY database_id
+ORDER BY DatabaseName;
+
+-- Redo Log Files
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    name AS LogFileName,
+    physical_name AS LogPhysicalName,
+    size * 8.0 / 1024 AS LogFileSizeMB
+FROM sys.master_files
+WHERE database_id > 4 AND type_desc = 'LOG' -- Exclude system databases and data files
+ORDER BY DatabaseName, LogFileName;
+
+--Redo log sizes for TempDB
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    name AS LogFileName,
+    physical_name AS LogPhysicalName,
+    size * 8.0 / 1024 AS LogFileSizeMB
+FROM sys.master_files
+WHERE database_id = 2 AND type_desc = 'LOG' -- TempDB log files
+ORDER BY DatabaseName, LogFileName;
