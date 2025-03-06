@@ -1,3 +1,37 @@
+# Define the path to the input text file containing group names
+$GroupListFile = "C:\path\to\groups.txt"
+
+# Check if the file exists
+if (!(Test-Path $GroupListFile)) {
+    Write-Host "Input file not found!" -ForegroundColor Red
+    exit
+}
+
+# Read all group names from the text file
+$Groups = Get-Content $GroupListFile
+
+# Iterate through each group and fetch its members
+foreach ($Group in $Groups) {
+    Write-Host "$Group ----" -ForegroundColor Cyan
+    
+    # Get group members
+    $Members = Get-ADGroupMember -Identity $Group -ErrorAction SilentlyContinue
+    
+    if ($Members) {
+        foreach ($Member in $Members) {
+            if ($Member.objectClass -eq "user") {
+                Write-Host "    $($Member.Name)" -ForegroundColor Green
+            } elseif ($Member.objectClass -eq "group") {
+                Write-Host "    $($Member.Name) (Nested Group)" -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host "    No members found or group does not exist." -ForegroundColor Red
+    }
+    Write-Host ""
+}
+
+
 # Path to the text file containing the list of servers
 $serverList = Get-Content "C:\Path\To\servers.txt"
 
