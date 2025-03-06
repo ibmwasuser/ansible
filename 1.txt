@@ -1,3 +1,31 @@
+# Define the domain
+$DomainName = "ABC.com"
+
+# Path to the text file containing usernames
+$userFile = "C:\path\to\users.txt"
+
+# Read all users from the file
+$userList = Get-Content $userFile
+
+# Loop through each user and fetch their group membership
+foreach ($user in $userList) {
+    Write-Output "User: $user"
+
+    # Get the user's group memberships from ABC.com domain
+    $userGroups = Get-ADUser -Identity $user -Server $DomainName -Property MemberOf | Select-Object -ExpandProperty MemberOf
+
+    if ($userGroups) {
+        foreach ($group in $userGroups) {
+            $groupName = (Get-ADGroup -Identity $group -Server $DomainName).Name
+            Write-Output "  - $groupName"
+        }
+    } else {
+        Write-Output "  - No groups found"
+    }
+
+    Write-Output "--------------------------------------"
+}
+
 # Define the path to the input text file containing group names
 $GroupListFile = "C:\path\to\groups.txt"
 
