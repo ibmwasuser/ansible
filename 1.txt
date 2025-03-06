@@ -4,20 +4,23 @@ $serverList = Get-Content "C:\Path\To\servers.txt"
 # Loop through each server and get VMware Tools version
 foreach ($server in $serverList) {
     try {
+        # Using CIM instead of WMI for better performance
         $vmTools = Invoke-Command -ComputerName $server -ScriptBlock {
-            Get-WmiObject -Query "SELECT * FROM Win32_Product WHERE Name LIKE 'VMware Tools%'"
+            Get-CimInstance -ClassName Win32_Product | Where-Object { $_.Name -like "VMware Tools*" }
         } -ErrorAction Stop
-        
+
+        # Print output based on result
         if ($vmTools) {
-            Write-Output "$server - VMware Tools Version: $($vmTools.Version)"
+            Write-Host "$server - VMware Tools Version: $($vmTools.Version)" -ForegroundColor Green
         } else {
-            Write-Output "$server - VMware Tools not found"
+            Write-Host "$server - VMware Tools not found" -ForegroundColor Yellow
         }
     }
     catch {
-        Write-Output "$server - Unable to connect or retrieve VMware Tools version"
+        Write-Host "$server - Unable to connect or retrieve VMware Tools version. Error: $_" -ForegroundColor Red
     }
 }
+
 
 ----
 
