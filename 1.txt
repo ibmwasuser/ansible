@@ -1,3 +1,26 @@
+# Path to the text file containing the list of servers
+$serverList = Get-Content "C:\Path\To\servers.txt"
+
+# Loop through each server and get VMware Tools version
+foreach ($server in $serverList) {
+    try {
+        $vmTools = Invoke-Command -ComputerName $server -ScriptBlock {
+            Get-WmiObject -Query "SELECT * FROM Win32_Product WHERE Name LIKE 'VMware Tools%'"
+        } -ErrorAction Stop
+        
+        if ($vmTools) {
+            Write-Output "$server - VMware Tools Version: $($vmTools.Version)"
+        } else {
+            Write-Output "$server - VMware Tools not found"
+        }
+    }
+    catch {
+        Write-Output "$server - Unable to connect or retrieve VMware Tools version"
+    }
+}
+
+----
+
 $User = "narao"
 $Server = "europa"
 
