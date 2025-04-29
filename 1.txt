@@ -1,199 +1,42 @@
-# Define the domain
-$DomainName = "ABC.com"
+# List of remote servers
+$servers = @("Server1", "Server2", "Server3")  # Replace with your actual server names
 
-# Path to the text file containing usernames
-$userFile = "C:\path\to\users.txt"
-
-# Read all users from the file
-$userList = Get-Content $userFile
-
-# Loop through each user and fetch their group membership
-foreach ($user in $userList) {
-    Write-Output "User: $user"
-
-    # Get the user's group memberships from ABC.com domain
-    $userGroups = Get-ADUser -Identity $user -Server $DomainName -Property MemberOf | Select-Object -ExpandProperty MemberOf
-
-    if ($userGroups) {
-        foreach ($group in $userGroups) {
-            $groupName = (Get-ADGroup -Identity $group -Server $DomainName).Name
-            Write-Output "  - $groupName"
+# Script block to run on each server
+$scriptBlock = {
+    $ram = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)
+    $cpu = Get-CimInstance Win32_Processor
+    $logicalCores = ($cpu | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum
+    $physicalCores = ($cpu | Measure-Object -Property NumberOfCores -Sum).Sum
+    $drives = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | ForEach-Object {
+        [PSCustomObject]@{
+            Drive     = $_.DeviceID
+            Size_GB   = [math]::Round($_.Size / 1GB, 2)
         }
-    } else {
-        Write-Output "  - No groups found"
     }
 
-    Write-Output "--------------------------------------"
-}
-
-# Define the path to the input text file containing group names
-$GroupListFile = "C:\path\to\groups.txt"
-
-# Check if the file exists
-if (!(Test-Path $GroupListFile)) {
-    Write-Host "Input file not found!" -ForegroundColor Red
-    exit
-}
-
-# Read all group names from the text file
-$Groups = Get-Content $GroupListFile
-
-# Iterate through each group and fetch its members
-foreach ($Group in $Groups) {
-    Write-Host "$Group ----" -ForegroundColor Cyan
-    
-    # Get group members
-    $Members = Get-ADGroupMember -Identity $Group -ErrorAction SilentlyContinue
-    
-    if ($Members) {
-        foreach ($Member in $Members) {
-            if ($Member.objectClass -eq "user") {
-                Write-Host "    $($Member.Name)" -ForegroundColor Green
-            } elseif ($Member.objectClass -eq "group") {
-                Write-Host "    $($Member.Name) (Nested Group)" -ForegroundColor Yellow
-            }
-        }
-    } else {
-        Write-Host "    No members found or group does not exist." -ForegroundColor Red
+    [PSCustomObject]@{
+        Server         = $env:COMPUTERNAME
+        RAM_GB         = $ram
+        Physical_Cores = $physicalCores
+        Logical_Cores  = $logicalCores
+        Drives         = ($drives | Out-String).Trim()
     }
-    Write-Host ""
 }
 
-
-# Path to the text file containing the list of servers
-$serverList = Get-Content "C:\Path\To\servers.txt"
-
-# Loop through each server and get VMware Tools version
-foreach ($server in $serverList) {
+# Run the script on all servers
+$results = foreach ($server in $servers) {
     try {
-        # Using CIM instead of WMI for better performance
-        $vmTools = Invoke-Command -ComputerName $server -ScriptBlock {
-            Get-CimInstance -ClassName Win32_Product | Where-Object { $_.Name -like "VMware Tools*" }
-        } -ErrorAction Stop
-
-        # Print output based on result
-        if ($vmTools) {
-            Write-Host "$server - VMware Tools Version: $($vmTools.Version)" -ForegroundColor Green
-        } else {
-            Write-Host "$server - VMware Tools not found" -ForegroundColor Yellow
+        Invoke-Command -ComputerName $server -ScriptBlock $scriptBlock -ErrorAction Stop
+    } catch {
+        [PSCustomObject]@{
+            Server         = $server
+            RAM_GB         = "N/A"
+            Physical_Cores = "N/A"
+            Logical_Cores  = "N/A"
+            Drives         = "Connection Failed"
         }
     }
-    catch {
-        Write-Host "$server - Unable to connect or retrieve VMware Tools version. Error: $_" -ForegroundColor Red
-    }
 }
 
-
-----
-
-$User = "narao"
-$Server = "europa"
-
-# Get the user's group memberships
-$Groups = Get-ADUser -Identity $User -Server $Server -Properties Memberof |
-    Select-Object -ExpandProperty Memberof |
-    ForEach-Object { $_ -replace '^CN=([^,]+),.*$','$1' }
-
-# Print output in a structured format
-Write-Output "User: $User"
-Write-Output "----------------"
-$Groups | ForEach-Object { Write-Output $_ }
-
--->
-$Groups | ForEach-Object { [PSCustomObject]@{ User = $User; Group = $_ } } | 
-    Export-Csv -Path "C:\Temp\User_Groups.csv" -NoTypeInformation
-
----------------------------------------------------------------
-# Import Active Directory module
-Import-Module ActiveDirectory
-
-# Define input and output file paths
-$inputFile = "C:\Temp\groups.txt"    # Text file containing group names (one per line)
-$outputFile = "C:\Temp\AD_Groups_Users.csv"
-
-# Read group names from the file
-$groupNames = Get-Content -Path $inputFile
-
-# Initialize an array to store results
-$groupData = @()
-
-foreach ($groupName in $groupNames) {
-    # Get members of the group
-    $members = Get-ADGroupMember -Identity $groupName -ErrorAction SilentlyContinue | Select-Object Name, SamAccountName
-
-    # Store data in an object
-    $groupData += [PSCustomObject]@{
-        GroupName = $groupName
-        Members   = if ($members) { ($members | ForEach-Object { $_.SamAccountName }) -join ", " } else { "No Members" }
-    }
-}
-
-# Export the results to CSV
-$groupData | Export-Csv -Path $outputFile -NoTypeInformation
-
-# Display the output in PowerShell
-$groupData
-
-
--- Database Name and Datafiles with Size Information
-SELECT
-    DB_NAME(database_id) AS DatabaseName,
-    name AS FileName,
-    physical_name AS PhysicalName,
-    size * 8.0 / 1024 AS FileSizeMB, -- Size in MB
-    size * 8.0 / 1024 - FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024 AS FreeSpaceMB, -- Free space in MB
-    CASE type_desc
-        WHEN 'ROWS' THEN 'Data File'
-        WHEN 'LOG' THEN 'Log File'
-        ELSE type_desc
-    END AS FileType
-FROM sys.master_files
-WHERE database_id > 4 -- Exclude system databases (master, tempdb, model, msdb) - adjust if needed
-ORDER BY DatabaseName, FileType, FileName;
-
--- TempDB Datafiles and Size Information
-SELECT
-    DB_NAME(database_id) AS DatabaseName,
-    name AS FileName,
-    physical_name AS PhysicalName,
-    size * 8.0 / 1024 AS FileSizeMB, -- Size in MB
-    size * 8.0 / 1024 - FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024 AS FreeSpaceMB, -- Free space in MB
-    CASE type_desc
-        WHEN 'ROWS' THEN 'Data File'
-        WHEN 'LOG' THEN 'Log File'
-        ELSE type_desc
-    END AS FileType
-FROM sys.master_files
-WHERE database_id = 2 -- tempdb
-ORDER BY DatabaseName, FileType, FileName;
-
-
--- Total Allocated Size and Total Free Size (excluding log files)
-SELECT
-    DB_NAME(database_id) AS DatabaseName,
-    SUM(size * 8.0 / 1024) AS TotalAllocatedMB,
-    SUM(size * 8.0 / 1024 - FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024) AS TotalFreeMB
-FROM sys.master_files
-WHERE database_id > 4 AND type_desc = 'ROWS' -- Exclude system databases and log files
-GROUP BY database_id
-ORDER BY DatabaseName;
-
--- Redo Log Files
-SELECT
-    DB_NAME(database_id) AS DatabaseName,
-    name AS LogFileName,
-    physical_name AS LogPhysicalName,
-    size * 8.0 / 1024 AS LogFileSizeMB
-FROM sys.master_files
-WHERE database_id > 4 AND type_desc = 'LOG' -- Exclude system databases and data files
-ORDER BY DatabaseName, LogFileName;
-
---Redo log sizes for TempDB
-SELECT
-    DB_NAME(database_id) AS DatabaseName,
-    name AS LogFileName,
-    physical_name AS LogPhysicalName,
-    size * 8.0 / 1024 AS LogFileSizeMB
-FROM sys.master_files
-WHERE database_id = 2 AND type_desc = 'LOG' -- TempDB log files
-ORDER BY DatabaseName, LogFileName;
+# Display results
+$results | Format-Table -AutoSize
