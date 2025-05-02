@@ -1,3 +1,37 @@
+# Path to the server list
+$servers = Get-Content "C:\Path\To\servers.txt"
+
+foreach ($server in $servers) {
+    Write-Host "Processing server: $server" -ForegroundColor Cyan
+    try {
+        Invoke-Command -ComputerName $server -Authentication Negotiate -ScriptBlock {
+            $output = @{}
+
+            # Get Total RAM
+            $ram = Get-CimInstance Win32_ComputerSystem
+            $output.TotalRAM_GB = [math]::Round($ram.TotalPhysicalMemory / 1GB, 2)
+
+            # Get CPU Core Info
+            $cpu = Get-CimInstance Win32_Processor
+            $output.PhysicalCores = ($cpu | Measure-Object -Property NumberOfCores -Sum).Sum
+            $output.LogicalProcessors = ($cpu | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum
+
+            # Get Disk Info
+            $disks = Get-CimInstance Win32_LogicalDisk | Where-Object { $_.DriveType -eq 3 -and $_.DeviceID -ne 'Z:' }
+            $output.Disks = $disks | Select-Object DeviceID, 
+                @{Name='Size(GB)'; Expression={[math]::Round($_.Size / 1GB, 2)}},
+                @{Name='FreeSpace(GB)'; Expression={[math]::Round($_.FreeSpace / 1GB, 2)}},
+                @{Name='FreeSpace(%)'; Expression={[math]::Round(($_.FreeSpace / $_.Size) * 100, 2)}}
+
+            return $output
+        } -ErrorAction Stop
+    }
+    catch {
+        Write-Host "Failed to connect to $server: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+--------------------------------------
 # Read server names from a file or array
 $servers = @("Server1", "Server2")  # Replace or load from file
 
